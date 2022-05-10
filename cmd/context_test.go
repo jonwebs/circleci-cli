@@ -115,6 +115,23 @@ https://circleci.com/account/api`))
 				Expect(err).ShouldNot(HaveOccurred())
 				Eventually(session).Should(gexec.Exit(0))
 			})
+
+			It("prints all in-band errors returned by the API", func() {
+				By("setting up a mock server")
+				tempSettings.AppendRESTPostHandler(clitest.MockRequestResponse{
+					Status:        http.StatusOK,
+					Request:       fmt.Sprintf(`{"name": "%s","owner":{"id":"\"%s\""}}`, contextName, orgID),
+					Response:      fmt.Sprintf(`{"id": "497f6eca-6276-4993-bfeb-53cbbbba6f08", "name": "%s", "created_at": "2015-09-21T17:29:21.042Z" }`, contextName),
+					ErrorResponse: `{ "message": "ignored error" }`,
+				})
+				By("running the command")
+				session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+
+				Expect(err).ShouldNot(HaveOccurred())
+				Eventually(session.Err).Should(gbytes.Say(`Error: error1
+error2`))
+				Eventually(session).ShouldNot(gexec.Exit(0))
+			})
 		})
 	})
 })
